@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<title>게임 발매 일정</title>
+
+	<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+	<main class="release-page">
+		<header class="page-header">
+			<p class="eyebrow">UPCOMING RELEASES</p>
+			<h1>게임 발매 일정</h1>
+			<p class="page-description">다가오는 게임의 발매일과 지원 플랫폼을 확인하세요.</p>
+		</header>
+
+		<div class="table-card">
+			<table>
+				<thead>
+				<tr>
+					<th class="date-column">발매일</th>
+					<th>게임명</th>
+					<th class="platform-column">플랫폼</th>
+				</tr>
+				</thead>
+				<tbody id="releaseList" aria-live="polite"></tbody>
+			</table>
+		</div>
+	</main>
+
+<script src="/app.js"></script>
+</body>
+</html>
