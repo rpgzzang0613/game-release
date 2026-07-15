@@ -112,17 +112,68 @@ describe("Access authentication", () => {
 });
 
 describe("release API", () => {
-	it("lists all releases after validating Access", async () => {
+	it("lists the first 50 upcoming releases by default", async () => {
 		const releases = [{ id: 1, title: "Game", platform: "PS5", release_date: "2026-08-01" }];
 		const all = vi.fn(async () => ({ results: releases }));
-		const db = { prepare: vi.fn(() => ({ all })) };
+		const bind = vi.fn(() => ({ all }));
+		const db = { prepare: vi.fn(() => ({ bind })) };
 		const response = await worker.fetch(await apiRequest("/api/releases"), createEnv(db));
 
 		expect(response.status).toBe(200);
-		expect(await response.json()).toEqual({ releases });
-		expect(db.prepare.mock.calls[0][0]).not.toContain("date('now'");
+		expect(await response.json()).toEqual({ releases, next_cursor: null, has_more: false });
+		expect(db.prepare.mock.calls[0][0]).toContain("date('now', '+9 hours')");
 		expect(db.prepare.mock.calls[0][0]).not.toContain("created_at");
 		expect(db.prepare.mock.calls[0][0]).not.toContain("updated_at");
+		expect(bind).toHaveBeenCalledWith(51);
+	});
+
+	it("searches titles while escaping LIKE wildcard characters", async () => {
+		const all = vi.fn(async () => ({ results: [] }));
+		const bind = vi.fn(() => ({ all }));
+		const db = { prepare: vi.fn(() => ({ bind })) };
+		const response = await worker.fetch(
+			await apiRequest("/api/releases?q=100%25_%5C&exclude_released=false&limit=10"),
+			createEnv(db),
+		);
+
+		expect(response.status).toBe(200);
+		expect(db.prepare.mock.calls[0][0]).toContain("title LIKE ? ESCAPE");
+		expect(db.prepare.mock.calls[0][0]).not.toContain("date('now'");
+		expect(bind.mock.calls[0][0]).toBe("%100\\%\\_\\\\%");
+		expect(bind.mock.calls[0][1]).toBe(11);
+	});
+
+	it("returns a cursor when another page exists", async () => {
+		const releases = Array.from({ length: 51 }, (_, index) => ({
+			id: index + 1,
+			title: `Game ${index + 1}`,
+			platform: "Steam",
+			release_date: "2026-08-01",
+		}));
+		const all = vi.fn(async () => ({ results: releases }));
+		const bind = vi.fn(() => ({ all }));
+		const db = { prepare: vi.fn(() => ({ bind })) };
+		const response = await worker.fetch(await apiRequest("/api/releases"), createEnv(db));
+		const body = await response.json();
+
+		expect(body.releases).toHaveLength(50);
+		expect(body.has_more).toBe(true);
+		expect(typeof body.next_cursor).toBe("string");
+
+		await worker.fetch(
+			await apiRequest(`/api/releases?cursor=${encodeURIComponent(body.next_cursor)}`),
+			createEnv(db),
+		);
+		expect(bind.mock.calls[1]).toEqual(["2026-08-01", "2026-08-01", 50, 51]);
+	});
+
+	it("rejects invalid pagination parameters before querying D1", async () => {
+		const db = { prepare: vi.fn() };
+		const response = await worker.fetch(await apiRequest("/api/releases?limit=101"), createEnv(db));
+
+		expect(response.status).toBe(400);
+		expect((await response.json()).error.code).toBe("INVALID_LIMIT");
+		expect(db.prepare).not.toHaveBeenCalled();
 	});
 
 	it("creates a normalized release and returns 201", async () => {

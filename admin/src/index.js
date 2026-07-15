@@ -2,6 +2,8 @@ const ALLOWED_PLATFORMS = ["NS", "NS2", "PS4", "PS5", "XBOX", "Steam"];
 const ALLOWED_PLATFORM_SET = new Set(ALLOWED_PLATFORMS);
 const MAX_JSON_BYTES = 16 * 1024;
 const JWKS_CACHE_TTL_MS = 60 * 60 * 1000;
+const DEFAULT_PAGE_SIZE = 50;
+const MAX_PAGE_SIZE = 100;
 
 let jwksCache;
 
@@ -299,13 +301,94 @@ async function getRelease(env, id) {
 	`).bind(id).first();
 }
 
-async function listReleases(env) {
+function encodeCursor(release) {
+	const value = JSON.stringify({ release_date: release.release_date, id: release.id });
+	return btoa(value).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+
+function decodeCursor(value) {
+	if (!value || value.length > 512) {
+		throw new HttpError(400, "INVALID_CURSOR", "cursor가 올바르지 않습니다.");
+	}
+
+	try {
+		const cursor = JSON.parse(new TextDecoder().decode(decodeBase64Url(value)));
+		if (!isValidDate(cursor.release_date) || !Number.isSafeInteger(cursor.id) || cursor.id < 1) {
+			throw new Error("Invalid cursor payload");
+		}
+		return cursor;
+	} catch {
+		throw new HttpError(400, "INVALID_CURSOR", "cursor가 올바르지 않습니다.");
+	}
+}
+
+function parseListOptions(url) {
+	const query = url.searchParams.get("q")?.trim() ?? "";
+	if (query.length > 100) {
+		throw new HttpError(400, "INVALID_QUERY", "검색어는 100자 이하여야 합니다.");
+	}
+
+	const excludeReleasedValue = url.searchParams.get("exclude_released") ?? "true";
+	if (excludeReleasedValue !== "true" && excludeReleasedValue !== "false") {
+		throw new HttpError(400, "INVALID_EXCLUDE_RELEASED", "exclude_released는 true 또는 false여야 합니다.");
+	}
+
+	const limitValue = url.searchParams.get("limit") ?? String(DEFAULT_PAGE_SIZE);
+	if (!/^\d+$/.test(limitValue)) {
+		throw new HttpError(400, "INVALID_LIMIT", `limit은 1부터 ${MAX_PAGE_SIZE} 사이의 정수여야 합니다.`);
+	}
+	const limit = Number(limitValue);
+	if (limit < 1 || limit > MAX_PAGE_SIZE) {
+		throw new HttpError(400, "INVALID_LIMIT", `limit은 1부터 ${MAX_PAGE_SIZE} 사이의 정수여야 합니다.`);
+	}
+
+	const cursorValue = url.searchParams.get("cursor");
+	return {
+		query,
+		excludeReleased: excludeReleasedValue === "true",
+		limit,
+		cursor: cursorValue ? decodeCursor(cursorValue) : null,
+	};
+}
+
+function escapeLike(value) {
+	return value.replace(/[\\%_]/g, "\\$&");
+}
+
+async function listReleases(env, url) {
+	const options = parseListOptions(url);
+	const conditions = [];
+	const values = [];
+
+	if (options.excludeReleased) {
+		conditions.push("release_date >= date('now', '+9 hours')");
+	}
+	if (options.query) {
+		conditions.push("title LIKE ? ESCAPE '\\'");
+		values.push(`%${escapeLike(options.query)}%`);
+	}
+	if (options.cursor) {
+		conditions.push("(release_date > ? OR (release_date = ? AND id > ?))");
+		values.push(options.cursor.release_date, options.cursor.release_date, options.cursor.id);
+	}
+
+	const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 	const { results } = await env.DB.prepare(`
 		SELECT id, title, platform, release_date
 		  FROM game_release
-		 ORDER BY release_date, title, id
-	`).all();
-	return json({ releases: results });
+		  ${whereClause}
+		 ORDER BY release_date, id
+		 LIMIT ?
+	`).bind(...values, options.limit + 1).all();
+
+	const hasMore = results.length > options.limit;
+	const releases = hasMore ? results.slice(0, options.limit) : results;
+	const lastRelease = releases.at(-1);
+	return json({
+		releases,
+		next_cursor: hasMore && lastRelease ? encodeCursor(lastRelease) : null,
+		has_more: hasMore,
+	});
 }
 
 async function createRelease(request, env) {
@@ -347,7 +430,7 @@ async function handleApi(request, env, url) {
 	await verifyAccess(request, env);
 
 	if (url.pathname === "/api/releases") {
-		if (request.method === "GET") return listReleases(env);
+		if (request.method === "GET") return listReleases(env, url);
 		if (request.method === "POST") return createRelease(request, env);
 		return json({ error: { code: "METHOD_NOT_ALLOWED", message: "허용되지 않은 요청 방식입니다." } }, 405, {
 			allow: "GET, POST",

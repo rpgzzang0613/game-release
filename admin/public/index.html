@@ -8,15 +8,108 @@
 	<link rel="stylesheet" href="/style.css">
 </head>
 <body>
-	<main class="admin-page">
-		<p class="eyebrow">GAME RELEASE ADMIN</p>
-		<h1>게임 발매 일정 관리</h1>
-		<p class="description">등록·수정·삭제 기능을 추가할 관리자 전용 화면입니다.</p>
+	<header class="topbar">
+		<div class="topbar__inner">
+			<div>
+				<p class="eyebrow">GAME RELEASE ADMIN</p>
+				<h1>게임 발매 일정 관리</h1>
+			</div>
+			<span class="access-status"><span aria-hidden="true"></span> 관리자</span>
+		</div>
+	</header>
 
-		<section class="empty-state">
-			<h2>관리자 Worker 준비 완료</h2>
-			<p>다음 단계에서 게임 관리 폼과 CRUD API를 연결할 수 있습니다.</p>
+	<main class="admin-page">
+		<section class="create-section" aria-labelledby="create-title">
+			<div class="section-heading">
+				<div>
+					<h2 id="create-title">새 게임 등록</h2>
+					<p>게임명, 발매일, 플랫폼을 입력하세요.</p>
+				</div>
+			</div>
+
+			<form id="createForm" class="release-form">
+				<div class="form-field form-field--title">
+					<label for="gameTitle">게임명</label>
+					<input id="gameTitle" name="title" type="text" placeholder="게임명을 입력하세요" autocomplete="off" required>
+				</div>
+
+				<div class="form-field form-field--date">
+					<label for="releaseDate">발매일</label>
+					<input id="releaseDate" name="release_date" type="date" required>
+				</div>
+
+				<fieldset class="platform-field">
+					<legend>플랫폼</legend>
+					<div class="platform-options">
+						<label><input type="checkbox" name="platform" value="NS"><span>NS</span></label>
+						<label><input type="checkbox" name="platform" value="NS2"><span>NS2</span></label>
+						<label><input type="checkbox" name="platform" value="PS4"><span>PS4</span></label>
+						<label><input type="checkbox" name="platform" value="PS5"><span>PS5</span></label>
+						<label><input type="checkbox" name="platform" value="XBOX"><span>XBOX</span></label>
+						<label><input type="checkbox" name="platform" value="Steam"><span>Steam</span></label>
+					</div>
+				</fieldset>
+
+				<button class="button button--primary create-button" type="submit">게임 등록</button>
+			</form>
+		</section>
+
+		<section class="list-section" aria-labelledby="list-title">
+			<div class="section-heading list-heading">
+				<div>
+					<h2 id="list-title">등록된 게임</h2>
+					<p>발매일이 빠른 순서로 표시됩니다.</p>
+				</div>
+			</div>
+
+			<form id="searchForm" class="list-toolbar" role="search">
+				<div class="search-field">
+					<label class="sr-only" for="titleSearch">게임명 검색</label>
+					<input id="titleSearch" name="q" type="search" placeholder="게임명으로 검색" autocomplete="off">
+					<button class="button button--secondary search-button" type="submit">검색</button>
+				</div>
+				<label class="release-filter">
+					<input id="hideReleased" type="checkbox" checked>
+					<span>이미 발매된 게임 제외</span>
+				</label>
+			</form>
+
+			<div class="release-list">
+				<div class="release-list__header" aria-hidden="true">
+					<span>발매일</span>
+					<span>게임명</span>
+					<span>플랫폼</span>
+					<span>관리</span>
+				</div>
+				<div id="releaseRows"></div>
+			</div>
+			<div class="load-more-wrap">
+				<button class="button button--secondary load-more-button" type="button">더 보기</button>
+			</div>
 		</section>
 	</main>
+
+	<template id="releaseTemplate">
+		<article class="release-item">
+			<div class="release-item__date">
+				<span class="mobile-label">발매일</span>
+				<time></time>
+			</div>
+			<div class="release-item__title">
+				<span class="mobile-label">게임명</span>
+				<strong></strong>
+			</div>
+			<div class="release-item__platforms">
+				<span class="mobile-label">플랫폼</span>
+				<div class="platform-badges"></div>
+			</div>
+			<div class="release-item__actions">
+				<button class="button button--secondary edit-button" type="button">수정</button>
+				<button class="button button--danger delete-button" type="button">삭제</button>
+			</div>
+		</article>
+	</template>
+
+	<script src="/app.js"></script>
 </body>
 </html>
