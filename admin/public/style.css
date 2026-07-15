@@ -211,6 +211,8 @@ h1 {
 	font-weight: 700;
 }
 
+.platform-options span { min-height: 42px; }
+
 .platform-options input:checked + span {
 	background: var(--platform-background);
 	color: var(--platform-color);
@@ -282,6 +284,17 @@ h1 {
 	height: 42px;
 	padding-inline: 18px;
 }
+
+.form-status {
+	margin: -8px 0 0;
+	padding: 0 24px 20px;
+	font-size: 12px;
+	font-weight: 700;
+}
+
+.form-status--success { color: #18794e; }
+
+.form-status--error { color: #c9363e; }
 
 .sr-only {
 	position: absolute;
@@ -422,8 +435,14 @@ h1 {
 	margin: 0;
 	padding: 10px 24px;
 	border-bottom: 1px solid var(--border);
-	background: #fff7f7;
+	background: #f3faf6;
+	color: #18794e;
 	font-size: 12px;
+}
+
+.list-status--error {
+	background: #fff7f7;
+	color: #c9363e;
 }
 
 .load-more-wrap {
@@ -510,6 +529,11 @@ h1 {
 	}
 
 	.create-button { height: 44px; }
+
+	.form-status {
+		margin-top: -3px;
+		padding: 0 18px 18px;
+	}
 
 	.release-list {
 		padding: 12px;

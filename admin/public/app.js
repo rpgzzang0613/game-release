@@ -1,5 +1,8 @@
 const PAGE_SIZE = 50;
 
+const createForm = document.getElementById("createForm");
+const createButton = createForm.querySelector(".create-button");
+const createStatus = document.getElementById("createStatus");
 const rows = document.getElementById("releaseRows");
 const template = document.getElementById("releaseTemplate");
 const hideReleased = document.getElementById("hideReleased");
@@ -15,6 +18,7 @@ let nextCursor = null;
 let hasMore = false;
 let requestController;
 let requestSequence = 0;
+let createStatusTimer;
 
 function getPlatformTheme(platform) {
 	const themes = {
@@ -70,6 +74,25 @@ function setLoading(loading, append) {
 	rows.setAttribute("aria-busy", String(loading));
 }
 
+function setCreateStatus(message = "", isError = false, autoHide = false) {
+	clearTimeout(createStatusTimer);
+	createStatusTimer = undefined;
+	createStatus.textContent = message;
+	createStatus.classList.toggle("form-status--error", isError);
+	createStatus.classList.toggle("form-status--success", Boolean(message) && !isError);
+	createStatus.hidden = !message;
+	if (message && autoHide) {
+		createStatusTimer = setTimeout(() => setCreateStatus(), 3000);
+	}
+}
+
+function setCreateLoading(loading) {
+	for (const element of createForm.elements) {
+		element.disabled = loading;
+	}
+	createButton.textContent = loading ? "등록 중..." : "게임 등록";
+}
+
 async function loadReleases({ append = false } = {}) {
 	if (append && (!hasMore || !nextCursor)) return;
 
@@ -96,6 +119,7 @@ async function loadReleases({ append = false } = {}) {
 
 	try {
 		const response = await fetch(`/api/releases?${params}`, {
+			credentials: "same-origin",
 			headers: { accept: "application/json" },
 			signal: controller.signal,
 		});
@@ -119,14 +143,16 @@ async function loadReleases({ append = false } = {}) {
 		nextCursor = typeof body.next_cursor === "string" ? body.next_cursor : null;
 		hasMore = body.has_more === true && nextCursor !== null;
 		loadMoreWrap.hidden = !hasMore;
+		return true;
 	} catch (error) {
-		if (error.name === "AbortError") return;
+		if (error.name === "AbortError") return false;
 		const message = error instanceof Error ? error.message : "게임 목록을 불러오지 못했습니다.";
 		if (append) {
 			setStatus(message, true);
 		} else {
 			renderMessage(message, "empty-message--error");
 		}
+		return false;
 	} finally {
 		if (requestId === requestSequence) {
 			setLoading(false, append);
@@ -134,12 +160,50 @@ async function loadReleases({ append = false } = {}) {
 	}
 }
 
-document.getElementById("createForm").addEventListener("submit", (event) => {
+createForm.addEventListener("submit", async (event) => {
 	event.preventDefault();
-	alert("게임 등록 API 연결은 다음 단계에서 적용할 예정입니다.");
+	setCreateStatus();
+
+	const form = new FormData(createForm);
+	const platforms = form.getAll("platform");
+	if (platforms.length === 0) {
+		setCreateStatus("플랫폼을 하나 이상 선택해 주세요.", true);
+		createForm.querySelector('input[name="platform"]').focus();
+		return;
+	}
+
+	setCreateLoading(true);
+	try {
+		const response = await fetch("/api/releases", {
+			method: "POST",
+			credentials: "same-origin",
+			headers: {
+				accept: "application/json",
+				"content-type": "application/json",
+			},
+			body: JSON.stringify({
+				title: String(form.get("title") ?? "").trim(),
+				platform: platforms.join(","),
+				release_date: form.get("release_date"),
+			}),
+		});
+		const body = await response.json().catch(() => null);
+		if (!response.ok) {
+			throw new Error(body?.error?.message ?? "게임을 등록하지 못했습니다.");
+		}
+
+		createForm.reset();
+		setCreateStatus(`「${body.release.title}」을(를) 등록했습니다.`, false, true);
+		await loadReleases();
+	} catch (error) {
+		const message = error instanceof Error ? error.message : "게임을 등록하지 못했습니다.";
+		setCreateStatus(message, true);
+	} finally {
+		setCreateLoading(false);
+	}
 });
 
-rows.addEventListener("click", (event) => {
+rows.addEventListener("click", async (event) => {
 	const item = event.target.closest(".release-item");
 	if (!item) return;
 
@@ -147,8 +211,37 @@ rows.addEventListener("click", (event) => {
 		alert("게임 수정 API 연결은 다음 단계에서 적용할 예정입니다.");
 	}
 
-	if (event.target.closest(".delete-button")) {
-		alert("게임 삭제 API 연결은 다음 단계에서 적용할 예정입니다.");
+	const deleteButton = event.target.closest(".delete-button");
+	if (!deleteButton) return;
+
+	const title = item.querySelector(".release-item__title strong").textContent;
+	if (!confirm(`「${title}」을(를) 삭제할까요?\n삭제한 데이터는 복구할 수 없습니다.`)) return;
+
+	const actionButtons = item.querySelectorAll("button");
+	for (const button of actionButtons) button.disabled = true;
+	deleteButton.textContent = "삭제 중...";
+	setStatus();
+
+	try {
+		const response = await fetch(`/api/releases/${encodeURIComponent(item.dataset.id)}`, {
+			method: "DELETE",
+			credentials: "same-origin",
+			headers: { accept: "application/json" },
+		});
+		if (!response.ok) {
+			const body = await response.json().catch(() => null);
+			throw new Error(body?.error?.message ?? "게임을 삭제하지 못했습니다.");
+		}
+
+		const reloaded = await loadReleases();
+		if (!reloaded) {
+			setStatus(`「${title}」은(는) 삭제했지만 목록을 다시 불러오지 못했습니다.`, true);
+		}
+	} catch (error) {
+		const message = error instanceof Error ? error.message : "게임을 삭제하지 못했습니다.";
+		setStatus(message, true);
+		for (const button of actionButtons) button.disabled = false;
+		deleteButton.textContent = "삭제";
 	}
 });
 

@@ -221,4 +221,17 @@ describe("release API", () => {
 		expect(response.status).toBe(404);
 		expect((await response.json()).error.code).toBe("RELEASE_NOT_FOUND");
 	});
+
+	it("deletes a release by id", async () => {
+		const run = vi.fn(async () => ({ meta: { changes: 1 } }));
+		const bind = vi.fn(() => ({ run }));
+		const db = { prepare: vi.fn(() => ({ bind })) };
+		const response = await worker.fetch(await apiRequest("/api/releases/7", {
+			method: "DELETE",
+		}), createEnv(db));
+
+		expect(response.status).toBe(204);
+		expect(bind).toHaveBeenCalledWith(7);
+		expect(run).toHaveBeenCalledOnce();
+	});
 });
