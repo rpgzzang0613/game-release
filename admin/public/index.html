@@ -14,7 +14,10 @@
 				<p class="eyebrow">GAME RELEASE ADMIN</p>
 				<h1>게임 발매 일정 관리</h1>
 			</div>
-			<span class="access-status"><span aria-hidden="true"></span> 관리자</span>
+			<div class="account-actions">
+				<span class="access-status"><span aria-hidden="true"></span> 관리자</span>
+				<a class="logout-button" href="/cdn-cgi/access/logout">로그아웃</a>
+			</div>
 		</div>
 	</header>
 
@@ -73,6 +76,7 @@
 					<span>이미 발매된 게임 제외</span>
 				</label>
 			</form>
+			<p id="listStatus" class="list-status" role="status" hidden></p>
 
 			<div class="release-list">
 				<div class="release-list__header" aria-hidden="true">
@@ -81,9 +85,9 @@
 					<span>플랫폼</span>
 					<span>관리</span>
 				</div>
-				<div id="releaseRows"></div>
+				<div id="releaseRows" aria-live="polite"></div>
 			</div>
-			<div class="load-more-wrap">
+			<div class="load-more-wrap" hidden>
 				<button class="button button--secondary load-more-button" type="button">더 보기</button>
 			</div>
 		</section>

@@ -1,14 +1,20 @@
-const releases = [
-	{ id: 0, title: "엘든 링 밤의 통치자", platform: "PS4,PS5,XBOX,Steam", release_date: "2026-06-26" },
-	{ id: 1, title: "동키콩 바난자", platform: "NS2", release_date: "2026-07-17" },
-	{ id: 2, title: "닌자 가이덴 4", platform: "PS5,XBOX,Steam", release_date: "2026-10-21" },
-	{ id: 3, title: "포켓몬 레전즈 Z-A", platform: "NS,NS2", release_date: "2026-10-30" },
-	{ id: 4, title: "어쌔신 크리드 섀도우", platform: "NS2,PS5,XBOX,Steam", release_date: "2026-11-12" },
-];
+const PAGE_SIZE = 50;
 
 const rows = document.getElementById("releaseRows");
 const template = document.getElementById("releaseTemplate");
 const hideReleased = document.getElementById("hideReleased");
+const searchForm = document.getElementById("searchForm");
+const titleSearch = document.getElementById("titleSearch");
+const searchButton = searchForm.querySelector(".search-button");
+const loadMoreWrap = document.querySelector(".load-more-wrap");
+const loadMoreButton = document.querySelector(".load-more-button");
+const listStatus = document.getElementById("listStatus");
+
+let activeQuery = "";
+let nextCursor = null;
+let hasMore = false;
+let requestController;
+let requestSequence = 0;
 
 function getPlatformTheme(platform) {
 	const themes = {
@@ -22,71 +28,115 @@ function getPlatformTheme(platform) {
 	return themes[platform] ?? "default";
 }
 
-function renderReleases() {
-	rows.replaceChildren();
-	const today = getTodayInKorea();
-	const visibleReleases = hideReleased.checked
-		? releases.filter((release) => release.release_date >= today)
-		: releases;
+function createReleaseElement(release) {
+	const fragment = template.content.cloneNode(true);
+	const item = fragment.querySelector(".release-item");
+	const time = fragment.querySelector("time");
 
-	for (const release of visibleReleases) {
-		const fragment = template.content.cloneNode(true);
-		const item = fragment.querySelector(".release-item");
-		const time = fragment.querySelector("time");
+	item.dataset.id = release.id;
+	time.dateTime = release.release_date;
+	time.textContent = release.release_date;
+	fragment.querySelector(".release-item__title strong").textContent = release.title;
 
-		item.dataset.id = release.id;
-		time.dateTime = release.release_date;
-		time.textContent = release.release_date;
-		fragment.querySelector(".release-item__title strong").textContent = release.title;
-
-		const badges = fragment.querySelector(".platform-badges");
-		for (const platform of release.platform.split(",")) {
-			const badge = document.createElement("span");
-			badge.className = `platform-badge platform-badge--${getPlatformTheme(platform)}`;
-			badge.textContent = platform;
-			badges.appendChild(badge);
-		}
-
-		rows.appendChild(fragment);
+	const badges = fragment.querySelector(".platform-badges");
+	for (const platform of String(release.platform ?? "").split(",").filter(Boolean)) {
+		const badge = document.createElement("span");
+		badge.className = `platform-badge platform-badge--${getPlatformTheme(platform)}`;
+		badge.textContent = platform;
+		badges.appendChild(badge);
 	}
 
-	if (visibleReleases.length === 0) {
-		const message = document.createElement("p");
-		message.className = "empty-message";
-		message.textContent = "표시할 게임이 없습니다.";
-		rows.appendChild(message);
-	}
+	return fragment;
 }
 
-function getTodayInKorea() {
-	const parts = new Intl.DateTimeFormat("en-US", {
-		timeZone: "Asia/Seoul",
-		year: "numeric",
-		month: "2-digit",
-		day: "2-digit",
-	}).formatToParts(new Date());
-	const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-	return `${values.year}-${values.month}-${values.day}`;
+function renderMessage(message, className = "") {
+	const element = document.createElement("p");
+	element.className = `empty-message ${className}`.trim();
+	element.textContent = message;
+	rows.replaceChildren(element);
+}
+
+function setStatus(message = "", isError = false) {
+	listStatus.textContent = message;
+	listStatus.classList.toggle("list-status--error", isError);
+	listStatus.hidden = !message;
+}
+
+function setLoading(loading, append) {
+	searchButton.disabled = loading;
+	hideReleased.disabled = loading;
+	loadMoreButton.disabled = loading;
+	loadMoreButton.textContent = loading && append ? "불러오는 중..." : "더 보기";
+	rows.setAttribute("aria-busy", String(loading));
+}
+
+async function loadReleases({ append = false } = {}) {
+	if (append && (!hasMore || !nextCursor)) return;
+
+	if (!append) {
+		requestController?.abort();
+		nextCursor = null;
+		hasMore = false;
+		loadMoreWrap.hidden = true;
+		renderMessage("게임 목록을 불러오는 중입니다.", "loading-message");
+	}
+
+	const requestId = ++requestSequence;
+	const controller = new AbortController();
+	requestController = controller;
+	setStatus();
+	setLoading(true, append);
+
+	const params = new URLSearchParams({
+		exclude_released: String(hideReleased.checked),
+		limit: String(PAGE_SIZE),
+	});
+	if (activeQuery) params.set("q", activeQuery);
+	if (append && nextCursor) params.set("cursor", nextCursor);
+
+	try {
+		const response = await fetch(`/api/releases?${params}`, {
+			headers: { accept: "application/json" },
+			signal: controller.signal,
+		});
+		const body = await response.json().catch(() => null);
+		if (!response.ok) {
+			throw new Error(body?.error?.message ?? "게임 목록을 불러오지 못했습니다.");
+		}
+		if (!body || !Array.isArray(body.releases)) {
+			throw new Error("게임 목록 응답 형식이 올바르지 않습니다.");
+		}
+
+		if (!append) rows.replaceChildren();
+		for (const release of body.releases) {
+			rows.appendChild(createReleaseElement(release));
+		}
+
+		if (!append && body.releases.length === 0) {
+			renderMessage(activeQuery ? "검색 결과가 없습니다." : "표시할 게임이 없습니다.");
+		}
+
+		nextCursor = typeof body.next_cursor === "string" ? body.next_cursor : null;
+		hasMore = body.has_more === true && nextCursor !== null;
+		loadMoreWrap.hidden = !hasMore;
+	} catch (error) {
+		if (error.name === "AbortError") return;
+		const message = error instanceof Error ? error.message : "게임 목록을 불러오지 못했습니다.";
+		if (append) {
+			setStatus(message, true);
+		} else {
+			renderMessage(message, "empty-message--error");
+		}
+	} finally {
+		if (requestId === requestSequence) {
+			setLoading(false, append);
+		}
+	}
 }
 
 document.getElementById("createForm").addEventListener("submit", (event) => {
 	event.preventDefault();
-	const form = new FormData(event.currentTarget);
-	const platforms = form.getAll("platform");
-	if (platforms.length === 0) {
-		alert("플랫폼을 하나 이상 선택해 주세요.");
-		return;
-	}
-
-	releases.push({
-		id: Date.now(),
-		title: form.get("title").trim(),
-		platform: platforms.join(","),
-		release_date: form.get("release_date"),
-	});
-	releases.sort((a, b) => a.release_date.localeCompare(b.release_date));
-	event.currentTarget.reset();
-	renderReleases();
+	alert("게임 등록 API 연결은 다음 단계에서 적용할 예정입니다.");
 });
 
 rows.addEventListener("click", (event) => {
@@ -94,23 +144,26 @@ rows.addEventListener("click", (event) => {
 	if (!item) return;
 
 	if (event.target.closest(".edit-button")) {
-		alert("다음 단계에서 이 카드 안에 수정 입력칸이 열리도록 연결할 예정입니다.");
+		alert("게임 수정 API 연결은 다음 단계에서 적용할 예정입니다.");
 	}
 
 	if (event.target.closest(".delete-button")) {
-		alert("다음 단계에서 삭제 확인창과 API를 연결할 예정입니다.");
+		alert("게임 삭제 API 연결은 다음 단계에서 적용할 예정입니다.");
 	}
 });
 
-hideReleased.addEventListener("change", renderReleases);
-
-document.getElementById("searchForm").addEventListener("submit", (event) => {
+searchForm.addEventListener("submit", (event) => {
 	event.preventDefault();
-	alert("검색 API 연결은 다음 단계에서 적용할 예정입니다.");
+	activeQuery = titleSearch.value.trim();
+	loadReleases();
 });
 
-document.querySelector(".load-more-button").addEventListener("click", () => {
-	alert("페이지네이션 API 연결은 다음 단계에서 적용할 예정입니다.");
+hideReleased.addEventListener("change", () => {
+	loadReleases();
 });
 
-renderReleases();
+loadMoreButton.addEventListener("click", () => {
+	loadReleases({ append: true });
+});
+
+loadReleases();

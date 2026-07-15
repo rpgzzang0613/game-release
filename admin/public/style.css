@@ -58,17 +58,29 @@ h1 {
 	letter-spacing: -0.035em;
 }
 
-.access-status {
+.account-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.access-status,
+.logout-button {
 	display: inline-flex;
 	align-items: center;
-	gap: 7px;
-	padding: 7px 10px;
+	justify-content: center;
+	min-height: 32px;
 	border: 1px solid var(--border);
 	border-radius: 7px;
-	color: #4b5565;
 	font-size: 12px;
 	font-weight: 700;
 	white-space: nowrap;
+}
+
+.access-status {
+	gap: 7px;
+	padding: 0 10px;
+	color: #4b5565;
 }
 
 .access-status span {
@@ -76,6 +88,23 @@ h1 {
 	height: 7px;
 	border-radius: 50%;
 	background: #22a06b;
+}
+
+.logout-button {
+	padding: 0 11px;
+	background: #fff;
+	color: #4b5565;
+	text-decoration: none;
+}
+
+.logout-button:hover {
+	border-color: #b9c0cc;
+	background: var(--surface);
+}
+
+.logout-button:focus-visible {
+	outline: 3px solid rgba(79, 70, 229, 0.18);
+	outline-offset: 1px;
 }
 
 .admin-page { padding: 36px 0 72px; }
@@ -384,11 +413,32 @@ h1 {
 	text-align: center;
 }
 
+.loading-message { color: #737d8e; }
+
+.empty-message--error,
+.list-status--error { color: #c9363e; }
+
+.list-status {
+	margin: 0;
+	padding: 10px 24px;
+	border-bottom: 1px solid var(--border);
+	background: #fff7f7;
+	font-size: 12px;
+}
+
 .load-more-wrap {
 	display: flex;
 	justify-content: center;
 	padding: 16px 24px;
 	border-top: 1px solid var(--border);
+}
+
+.load-more-wrap[hidden] { display: none; }
+
+.button:disabled,
+.release-filter input:disabled {
+	cursor: wait;
+	opacity: 0.58;
 }
 
 .load-more-button {
