@@ -46,7 +46,7 @@
 			"database_name": "game-release",
 			"database_id": "91ff1c52-7c9f-4cca-a3c9-0f41fc5560b9"
 		}
-	],
+	]
 	/**
 	 * Service Bindings (communicate between multiple Workers)
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings
