@@ -1,0 +1,30 @@
+{
+	"$schema": "../node_modules/wrangler/config-schema.json",
+	"name": "game-release-admin",
+	"main": "src/index.js",
+	"compatibility_date": "2026-07-15",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"preview_urls": false,
+	"observability": {
+		"enabled": true
+	},
+	"upload_source_maps": true,
+	"vars": {
+		"ACCESS_AUD": "6e512403b5367a468bb51a185c65ba7a421c05b883295949100f370ff0b55b74",
+		"ACCESS_ISSUER": "https://gtdg.cloudflareaccess.com",
+		"ACCESS_JWKS_URL": "https://gtdg.cloudflareaccess.com/cdn-cgi/access/certs"
+	},
+	"assets": {
+		"directory": "./public/",
+		"binding": "ASSETS"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "game-release",
+			"database_id": "91ff1c52-7c9f-4cca-a3c9-0f41fc5560b9"
+		}
+	]
+}

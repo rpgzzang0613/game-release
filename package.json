@@ -1,12 +1,19 @@
 {
-  "name": "game-release",
+  "name": "game-release-monorepo",
   "version": "0.0.0",
   "private": true,
+  "workspaces": [
+    "app",
+    "admin"
+  ],
   "scripts": {
-    "deploy": "wrangler deploy",
-    "dev": "wrangler dev",
-    "start": "wrangler dev",
-    "test": "vitest"
+    "dev": "npm run dev:app",
+    "dev:app": "npm run dev --workspace @game-release/app",
+    "dev:admin": "npm run dev --workspace @game-release/admin",
+    "deploy": "npm run deploy:app",
+    "deploy:app": "npm run deploy --workspace @game-release/app",
+    "deploy:admin": "npm run deploy --workspace @game-release/admin",
+    "test": "npm run test --workspaces --if-present"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.12.4",
