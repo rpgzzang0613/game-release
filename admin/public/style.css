@@ -83,11 +83,16 @@ h1 {
 	color: #4b5565;
 }
 
-.access-status span {
+.access-status__indicator {
+	flex: 0 0 auto;
 	width: 7px;
 	height: 7px;
 	border-radius: 50%;
 	background: #22a06b;
+}
+
+.access-status__identity {
+	min-width: 0;
 }
 
 .logout-button {
@@ -543,11 +548,21 @@ h1 {
 	.topbar__inner,
 	.admin-page { width: calc(100% - 28px); }
 
-	.topbar__inner { min-height: 96px; }
+	.topbar__inner {
+		align-items: flex-start;
+		flex-direction: column;
+		min-height: 0;
+		padding: 18px 0;
+		gap: 14px;
+	}
 
 	h1 { font-size: 23px; }
 
-	.access-status { display: none; }
+	.account-actions {
+		align-self: flex-end;
+		flex: 0 0 auto;
+		width: auto;
+	}
 
 	.admin-page { padding: 22px 0 48px; }
 
