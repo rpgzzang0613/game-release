@@ -115,6 +115,35 @@
 		</article>
 	</template>
 
+	<template id="editTemplate">
+		<form class="edit-form">
+			<div class="form-field edit-form__title">
+				<label>게임명</label>
+				<input name="title" type="text" autocomplete="off" required>
+			</div>
+			<div class="form-field edit-form__date">
+				<label>발매일</label>
+				<input name="release_date" type="date" required>
+			</div>
+			<fieldset class="platform-field edit-form__platforms">
+				<legend>플랫폼</legend>
+				<div class="platform-options">
+					<label><input type="checkbox" name="platform" value="NS"><span>NS</span></label>
+					<label><input type="checkbox" name="platform" value="NS2"><span>NS2</span></label>
+					<label><input type="checkbox" name="platform" value="PS4"><span>PS4</span></label>
+					<label><input type="checkbox" name="platform" value="PS5"><span>PS5</span></label>
+					<label><input type="checkbox" name="platform" value="XBOX"><span>XBOX</span></label>
+					<label><input type="checkbox" name="platform" value="Steam"><span>Steam</span></label>
+				</div>
+			</fieldset>
+			<div class="edit-form__actions">
+				<button class="button button--primary save-button" type="submit">저장</button>
+				<button class="button button--secondary cancel-button" type="button">취소</button>
+			</div>
+			<p class="edit-form__status" role="status" hidden></p>
+		</form>
+	</template>
+
 	<script src="/app.js"></script>
 </body>
 </html>

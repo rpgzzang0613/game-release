@@ -5,6 +5,7 @@ const createButton = createForm.querySelector(".create-button");
 const createStatus = document.getElementById("createStatus");
 const rows = document.getElementById("releaseRows");
 const template = document.getElementById("releaseTemplate");
+const editTemplate = document.getElementById("editTemplate");
 const hideReleased = document.getElementById("hideReleased");
 const searchForm = document.getElementById("searchForm");
 const titleSearch = document.getElementById("titleSearch");
@@ -19,6 +20,8 @@ let hasMore = false;
 let requestController;
 let requestSequence = 0;
 let createStatusTimer;
+const releasesById = new Map();
+let editingId = null;
 
 function getPlatformTheme(platform) {
 	const themes = {
@@ -53,6 +56,47 @@ function createReleaseElement(release) {
 	return fragment;
 }
 
+function replaceWithReleaseElement(item, release) {
+	item.replaceWith(createReleaseElement(release));
+}
+
+function beginEdit(item) {
+	const id = item.dataset.id;
+	const release = releasesById.get(id);
+	if (!release) return;
+
+	if (editingId && editingId !== id) {
+		const currentItem = rows.querySelector(`.release-item[data-id="${CSS.escape(editingId)}"]`);
+		const currentRelease = releasesById.get(editingId);
+		if (currentItem && currentRelease) replaceWithReleaseElement(currentItem, currentRelease);
+	}
+
+	const fragment = editTemplate.content.cloneNode(true);
+	const form = fragment.querySelector(".edit-form");
+	form.elements.title.value = release.title;
+	form.elements.release_date.value = release.release_date;
+	const selectedPlatforms = new Set(String(release.platform).split(","));
+	for (const checkbox of form.querySelectorAll('input[name="platform"]')) {
+		checkbox.checked = selectedPlatforms.has(checkbox.value);
+	}
+
+	item.classList.add("release-item--editing");
+	item.replaceChildren(fragment);
+	editingId = id;
+	form.elements.title.focus();
+}
+
+function setEditLoading(form, loading) {
+	for (const element of form.elements) element.disabled = loading;
+	form.querySelector(".save-button").textContent = loading ? "저장 중..." : "저장";
+}
+
+function setEditStatus(form, message = "") {
+	const status = form.querySelector(".edit-form__status");
+	status.textContent = message;
+	status.hidden = !message;
+}
+
 function renderMessage(message, className = "") {
 	const element = document.createElement("p");
 	element.className = `empty-message ${className}`.trim();
@@ -82,7 +126,7 @@ function setCreateStatus(message = "", isError = false, autoHide = false) {
 	createStatus.classList.toggle("form-status--success", Boolean(message) && !isError);
 	createStatus.hidden = !message;
 	if (message && autoHide) {
-		createStatusTimer = setTimeout(() => setCreateStatus(), 3000);
+		createStatusTimer = setTimeout(() => setCreateStatus(), 5000);
 	}
 }
 
@@ -132,7 +176,12 @@ async function loadReleases({ append = false } = {}) {
 		}
 
 		if (!append) rows.replaceChildren();
+		if (!append) {
+			releasesById.clear();
+			editingId = null;
+		}
 		for (const release of body.releases) {
+			releasesById.set(String(release.id), release);
 			rows.appendChild(createReleaseElement(release));
 		}
 
@@ -208,7 +257,15 @@ rows.addEventListener("click", async (event) => {
 	if (!item) return;
 
 	if (event.target.closest(".edit-button")) {
-		alert("게임 수정 API 연결은 다음 단계에서 적용할 예정입니다.");
+		beginEdit(item);
+		return;
+	}
+
+	if (event.target.closest(".cancel-button")) {
+		const release = releasesById.get(item.dataset.id);
+		if (release) replaceWithReleaseElement(item, release);
+		editingId = null;
+		return;
 	}
 
 	const deleteButton = event.target.closest(".delete-button");
@@ -242,6 +299,51 @@ rows.addEventListener("click", async (event) => {
 		setStatus(message, true);
 		for (const button of actionButtons) button.disabled = false;
 		deleteButton.textContent = "삭제";
+	}
+});
+
+rows.addEventListener("submit", async (event) => {
+	const form = event.target.closest(".edit-form");
+	if (!form) return;
+	event.preventDefault();
+
+	const item = form.closest(".release-item");
+	const data = new FormData(form);
+	const platforms = data.getAll("platform");
+	setEditStatus(form);
+	if (platforms.length === 0) {
+		setEditStatus(form, "플랫폼을 하나 이상 선택해 주세요.");
+		form.querySelector('input[name="platform"]').focus();
+		return;
+	}
+
+	setEditLoading(form, true);
+	try {
+		const response = await fetch(`/api/releases/${encodeURIComponent(item.dataset.id)}`, {
+			method: "PUT",
+			credentials: "same-origin",
+			headers: {
+				accept: "application/json",
+				"content-type": "application/json",
+			},
+			body: JSON.stringify({
+				title: String(data.get("title") ?? "").trim(),
+				platform: platforms.join(","),
+				release_date: data.get("release_date"),
+			}),
+		});
+		const body = await response.json().catch(() => null);
+		if (!response.ok) {
+			throw new Error(body?.error?.message ?? "게임을 수정하지 못했습니다.");
+		}
+
+		editingId = null;
+		const reloaded = await loadReleases();
+		if (!reloaded) setStatus("게임은 수정했지만 목록을 다시 불러오지 못했습니다.", true);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : "게임을 수정하지 못했습니다.";
+		setEditStatus(form, message);
+		setEditLoading(form, false);
 	}
 });
 
