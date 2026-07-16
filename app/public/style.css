@@ -145,11 +145,12 @@ tbody tr:hover {
 .platform-badge {
 	--badge-background: #f3f0ff;
 	--badge-color: #5748bd;
+	--badge-border-color: #c7c0ec;
 	display: inline-flex;
 	align-items: center;
 	min-height: 28px;
 	padding: 5px 10px;
-	border: var(--border);
+	border: 1px solid var(--badge-border-color);
 	border-radius: 999px;
 	background: var(--badge-background);
 	color: var(--badge-color);
@@ -162,21 +163,25 @@ tbody tr:hover {
 .platform-badge--playstation {
 	--badge-background: #edf3ff;
 	--badge-color: #0754b8;
+	--badge-border-color: #9dbbea;
 }
 
 .platform-badge--nintendo {
 	--badge-background: #fff0f1;
 	--badge-color: #d51d2a;
+	--badge-border-color: #efa4aa;
 }
 
 .platform-badge--steam {
 	--badge-background: #edf6fb;
 	--badge-color: #1b587c;
+	--badge-border-color: #9dbdcc;
 }
 
 .platform-badge--xbox {
 	--badge-background: #edf8eb;
 	--badge-color: #28751f;
+	--badge-border-color: #a3cfa0;
 }
 
 .skeleton-block {

@@ -188,7 +188,10 @@ h1 {
 	gap: 6px;
 }
 
-.platform-options label { position: relative; }
+.platform-options label {
+	position: relative;
+	cursor: pointer;
+}
 
 .platform-options input {
 	position: absolute;
@@ -213,6 +216,12 @@ h1 {
 
 .platform-options span { min-height: 42px; }
 
+.platform-options span {
+	border-color: var(--platform-border, #d7dce5);
+	color: var(--platform-color, #536074);
+	cursor: pointer;
+}
+
 .platform-options input:checked + span {
 	background: var(--platform-background);
 	color: var(--platform-color);
@@ -223,6 +232,7 @@ h1 {
 .platform-badge--nintendo {
 	--platform-background: #fff0f1;
 	--platform-color: #d51d2a;
+	--platform-border: #efa4aa;
 }
 
 .platform-options input[value="PS4"] + span,
@@ -230,18 +240,25 @@ h1 {
 .platform-badge--playstation {
 	--platform-background: #edf3ff;
 	--platform-color: #0754b8;
+	--platform-border: #9dbbea;
 }
 
 .platform-options input[value="Steam"] + span,
 .platform-badge--steam {
 	--platform-background: #edf6fb;
 	--platform-color: #1b587c;
+	--platform-border: #9dbdcc;
 }
 
 .platform-options input[value="XBOX"] + span,
 .platform-badge--xbox {
 	--platform-background: #edf8eb;
 	--platform-color: #28751f;
+	--platform-border: #a3cfa0;
+}
+
+.platform-options input:disabled + span {
+	cursor: wait;
 }
 
 .platform-options input:focus-visible + span {
@@ -435,6 +452,7 @@ h1 {
 .platform-badge {
 	min-height: 26px;
 	padding: 0 8px;
+	border-color: var(--platform-border, #d7dce5);
 	background: var(--platform-background, #f5f6f8);
 	color: var(--platform-color, #536074);
 	font-size: 11px;
