@@ -1,5 +1,7 @@
 import { getPlatformTheme, parsePlatforms } from "./platform.js";
 
+const UNKNOWN_RELEASE_DATE = "9999-12-31";
+
 function createMonthRow(monthKey) {
 	const [year, month] = monthKey.split("-");
 	const row = document.createElement("tr");
@@ -7,7 +9,7 @@ function createMonthRow(monthKey) {
 
 	const cell = document.createElement("td");
 	cell.colSpan = 3;
-	cell.textContent = `${year}년 ${Number(month)}월`;
+	cell.textContent = monthKey === "미정" ? "미정" : `${year}년 ${Number(month)}월`;
 
 	row.appendChild(cell);
 	return row;
@@ -27,7 +29,9 @@ function createReleaseRow(release) {
 	const releaseDateCell = document.createElement("td");
 	releaseDateCell.className = "release-date";
 	releaseDateCell.dataset.label = "발매일";
-	releaseDateCell.textContent = release.release_date;
+	releaseDateCell.textContent = release.release_date === UNKNOWN_RELEASE_DATE
+		? "미정"
+		: release.release_date;
 
 	const titleCell = document.createElement("td");
 	titleCell.className = "game-title";
@@ -75,7 +79,9 @@ export function renderReleaseList(releaseList, releases) {
 	let currentMonth = "";
 
 	for (const release of releases) {
-		const monthKey = String(release.release_date ?? "").slice(0, 7);
+		const monthKey = release.release_date === UNKNOWN_RELEASE_DATE
+			? "미정"
+			: String(release.release_date ?? "").slice(0, 7);
 
 		if (monthKey && monthKey !== currentMonth) {
 			releaseList.appendChild(createMonthRow(monthKey));
