@@ -41,7 +41,10 @@
 				</div>
 
 				<div class="form-field form-field--date">
-					<label for="releaseDate">발매일</label>
+					<div class="release-date-heading">
+						<label for="releaseDate">발매일</label>
+						<label class="release-date-unknown"><input name="release_date_unknown" type="checkbox"><span>미정</span></label>
+					</div>
 					<input id="releaseDate" name="release_date" type="date" required>
 				</div>
 
@@ -126,7 +129,10 @@
 				<input name="title" type="text" autocomplete="off" required>
 			</div>
 			<div class="form-field edit-form__date">
-				<label>발매일</label>
+				<div class="release-date-heading">
+					<label class="release-date-label">발매일</label>
+					<label class="release-date-unknown"><input name="release_date_unknown" type="checkbox"><span>미정</span></label>
+				</div>
 				<input name="release_date" type="date" required>
 			</div>
 			<fieldset class="platform-field edit-form__platforms">

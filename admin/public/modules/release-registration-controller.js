@@ -1,11 +1,13 @@
 import { createRelease } from "./api.js";
 import { focusFirstPlatformOption } from "./platform.js";
 import { readReleaseFormData } from "./release-form-data.js";
+import { setupReleaseDateInput, syncReleaseDateInput } from "./release-date.js";
 
 const SUCCESS_MESSAGE_DURATION = 5000;
 
 export function setupCreateReleaseForm({ onCreated }) {
 	const form = document.getElementById("createForm");
+	setupReleaseDateInput(form);
 	const button = form.querySelector(".create-button");
 	const status = document.getElementById("createStatus");
 	let statusTimer;
@@ -25,6 +27,7 @@ export function setupCreateReleaseForm({ onCreated }) {
 
 	function setLoading(loading) {
 		for (const element of form.elements) element.disabled = loading;
+		if (!loading) syncReleaseDateInput(form);
 		button.textContent = loading ? "등록 중..." : "게임 등록";
 	}
 

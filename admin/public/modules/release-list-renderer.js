@@ -1,4 +1,5 @@
 import { getPlatformTheme, parsePlatforms } from "./platform.js";
+import { setupReleaseDateInput, syncReleaseDateInput, UNKNOWN_RELEASE_DATE } from "./release-date.js";
 
 export function createReleaseElement(template, release) {
 	const fragment = template.content.cloneNode(true);
@@ -36,7 +37,12 @@ export function renderEditForm(item, editTemplate, release) {
 	const fragment = editTemplate.content.cloneNode(true);
 	const form = fragment.querySelector(".edit-form");
 	form.elements.title.value = release.title;
-	form.elements.release_date.value = release.release_date;
+	const unknownDate = release.release_date === UNKNOWN_RELEASE_DATE;
+	form.elements.release_date.value = unknownDate ? "" : release.release_date;
+	form.elements.release_date_unknown.checked = unknownDate;
+	form.elements.release_date.id = `edit-release-date-${release.id}`;
+	form.querySelector(".release-date-label").htmlFor = form.elements.release_date.id;
+	setupReleaseDateInput(form);
 
 	const selectedPlatforms = new Set(parsePlatforms(release.platform));
 	for (const checkbox of form.querySelectorAll('input[name="platform"]')) {
@@ -50,6 +56,7 @@ export function renderEditForm(item, editTemplate, release) {
 
 export function setEditLoading(form, loading) {
 	for (const element of form.elements) element.disabled = loading;
+	if (!loading) syncReleaseDateInput(form);
 	form.querySelector(".save-button").textContent = loading ? "저장 중..." : "저장";
 }
 
