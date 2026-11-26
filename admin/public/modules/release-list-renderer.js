@@ -8,7 +8,7 @@ export function createReleaseElement(template, release) {
 
 	item.dataset.id = release.id;
 	time.dateTime = release.release_date;
-	time.textContent = release.release_date;
+	time.textContent = release.release_date === UNKNOWN_RELEASE_DATE ? "미정" : release.release_date;
 	fragment.querySelector(".release-item__title strong").textContent = release.title;
 
 	const badges = fragment.querySelector(".platform-badges");

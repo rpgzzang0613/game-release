@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { env } from "cloudflare:test";
 import worker, { testing } from "../src/index.js";
 
 const ACCESS_AUD = "test-audience";
@@ -112,6 +113,39 @@ describe("Access authentication", () => {
 });
 
 describe("release API", () => {
+	it("paginates dated releases first, then unknown releases by id", async () => {
+		await env.DB.prepare(`CREATE TABLE game_release (
+			id INTEGER PRIMARY KEY, title TEXT NOT NULL, platform TEXT NOT NULL, release_date TEXT NOT NULL
+		)`).run();
+		const releases = [
+			[1, "Zulu", "9999-12-31"],
+			[2, "나중 게임", "9999-12-31"],
+			[3, "Alpha", "9999-12-31"],
+			[4, "가".repeat(200), "9999-12-31"],
+			[5, "Alpha", "9999-12-31"],
+			[8, "Dated Z", "2026-08-01"],
+			[9, "Dated A", "2026-08-01"],
+		];
+		await env.DB.batch(releases.map(([id, title, date]) => env.DB.prepare(
+			"INSERT INTO game_release (id, title, platform, release_date) VALUES (?, ?, 'PS5', ?)",
+		).bind(id, title, date)));
+
+		const ids = [];
+		let cursor = null;
+		for (let page = 0; page < 4; page++) {
+			const params = new URLSearchParams({ limit: "2", exclude_released: "false" });
+			if (cursor) params.set("cursor", cursor);
+			const response = await worker.fetch(await apiRequest(`/api/releases?${params}`), createEnv(env.DB));
+			expect(response.status).toBe(200);
+			const body = await response.json();
+			ids.push(...body.releases.map((release) => release.id));
+			cursor = body.next_cursor;
+			if (!body.has_more) break;
+		}
+		expect(ids).toEqual([8, 9, 1, 2, 3, 4, 5]);
+		expect(cursor).toBeNull();
+	});
+
 	it("lists the first 50 upcoming releases by default", async () => {
 		const releases = [{ id: 1, title: "Game", platform: "PS5", release_date: "2026-08-01" }];
 		const all = vi.fn(async () => ({ results: releases }));
